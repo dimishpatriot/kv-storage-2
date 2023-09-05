@@ -12,15 +12,9 @@ var store = struct {
 	m: make(map[string]string),
 }
 
-var (
-	ErrorEmptyData = errors.New("empty data")
-	ErrorNoSuchKey = errors.New("no such key")
-)
+var ErrorNoSuchKey = errors.New("no such key")
 
 func Put(k string, v string) error {
-	if k == "" || v == "" {
-		return ErrorEmptyData
-	}
 	store.Lock()
 	store.m[k] = v
 	store.Unlock()
@@ -42,7 +36,7 @@ func Get(k string) (string, error) {
 func Delete(k string) error {
 	store.Lock()
 	defer store.Unlock()
-	if _, ok := store.m[k]; k == "" || !ok {
+	if _, ok := store.m[k]; !ok {
 		return ErrorNoSuchKey
 	}
 	delete(store.m, k)

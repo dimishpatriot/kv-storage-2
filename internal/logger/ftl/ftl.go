@@ -34,6 +34,8 @@ func (l *FileTransactionLogger) Run() {
 	l.errors = errors
 
 	go func() {
+		defer l.file.Close()
+
 		for e := range events {
 			l.lastSequence++
 			_, err := fmt.Fprintf(

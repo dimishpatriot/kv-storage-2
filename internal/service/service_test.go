@@ -32,9 +32,6 @@ func TestPut(t *testing.T) {
 		{name: "one symbol key", args: args{k: "K", v: "correct value"}, wantErr: false},
 		{name: "non alphabet key", args: args{k: "/~!@#$%^&*()_+", v: "correct value"}, wantErr: false},
 		{name: "number string key", args: args{k: "0123456789", v: "correct value"}, wantErr: false},
-		{name: "empty key", args: args{k: "", v: ""}, wantErr: true},
-		{name: "empty value", args: args{k: "", v: ""}, wantErr: true},
-		{name: "empty key & value", args: args{k: "", v: ""}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -60,7 +57,6 @@ func TestGet(t *testing.T) {
 	}{
 		{name: "common key", args: args{k: "one"}, want: "ONE", wantErr: false},
 		{name: "number string key", args: args{k: "0123456789"}, want: "numbers", wantErr: false},
-		{name: "empty key", args: args{k: ""}, want: "", wantErr: true},
 		{name: "absent key", args: args{k: "absent"}, want: "", wantErr: true},
 	}
 	for _, tt := range tests {
@@ -91,7 +87,6 @@ func TestDelete(t *testing.T) {
 	}{
 		{name: "exists key", args: args{k: "one"}, wantErr: false},
 		{name: "absent key", args: args{k: "ONE"}, wantErr: true},
-		{name: "empty key", args: args{k: ""}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
