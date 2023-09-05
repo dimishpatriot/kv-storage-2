@@ -7,7 +7,7 @@ import (
 
 	"github.com/dimishpatriot/kv-storage/internal/logger"
 	"github.com/dimishpatriot/kv-storage/internal/logger/ftl"
-	"github.com/dimishpatriot/kv-storage/internal/service"
+	"github.com/dimishpatriot/kv-storage/internal/storage"
 	"github.com/gorilla/mux"
 )
 
@@ -45,14 +45,13 @@ func initTransactionLog() error {
 		case e, ok = <-events:
 			switch e.EventType {
 			case logger.EventDelete:
-				err = service.Delete(e.Key)
+				err = storage.Delete(e.Key)
 			case logger.EventPut:
-				err = service.Put(e.Key, e.Value)
+				err = storage.Put(e.Key, e.Value)
 			}
 		}
 	}
 
 	l.Run()
-
 	return err
 }

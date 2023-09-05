@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/dimishpatriot/kv-storage/internal/service"
+	"github.com/dimishpatriot/kv-storage/internal/storage"
 	"github.com/gorilla/mux"
 )
 
@@ -35,7 +35,7 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest)
 	}
 
-	err = service.Put(key, string(value))
+	err = storage.Put(key, string(value))
 	if err != nil {
 		http.Error(w,
 			err.Error(),
@@ -58,8 +58,8 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest)
 	}
 
-	value, err := service.Get(key)
-	if errors.Is(err, service.ErrorNoSuchKey) {
+	value, err := storage.Get(key)
+	if errors.Is(err, storage.ErrorNoSuchKey) {
 		http.Error(w,
 			err.Error(),
 			http.StatusNotFound)
@@ -86,8 +86,8 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest)
 	}
 
-	err = service.Delete(key)
-	if errors.Is(err, service.ErrorNoSuchKey) {
+	err = storage.Delete(key)
+	if errors.Is(err, storage.ErrorNoSuchKey) {
 		http.Error(w,
 			err.Error(),
 			http.StatusNotFound)
