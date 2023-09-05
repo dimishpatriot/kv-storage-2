@@ -5,11 +5,17 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/mux"
 )
 
-var store = make(map[string]string)
+var store = struct {
+	sync.RWMutex
+	m map[string]string
+}{
+	m: make(map[string]string),
+}
 
 var (
 	ErrorEmptyData = errors.New("empty data")
@@ -20,13 +26,17 @@ func Put(k string, v string) error {
 	if k == "" || v == "" {
 		return ErrorEmptyData
 	}
-	store[k] = v
+	store.Lock()
+	store.m[k] = v
+	store.Unlock()
 
 	return nil
 }
 
 func Get(k string) (string, error) {
-	v, ok := store[k]
+	store.RLock()
+	v, ok := store.m[k]
+	store.RUnlock()
 	if !ok {
 		return "", ErrorNoSuchKey
 	}
@@ -35,10 +45,12 @@ func Get(k string) (string, error) {
 }
 
 func Delete(k string) error {
-	if _, ok := store[k]; k == "" || !ok {
+	store.Lock()
+	defer store.Unlock()
+	if _, ok := store.m[k]; k == "" || !ok {
 		return ErrorNoSuchKey
 	}
-	delete(store, k)
+	delete(store.m, k)
 
 	return nil
 }

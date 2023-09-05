@@ -1,13 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 )
 
 func setupTest(tb testing.TB) func(tb testing.TB) {
 	// run before test
-	store = map[string]string{
+	store.m = map[string]string{
 		"one":        "ONE",
 		"0123456789": "numbers",
 	}
@@ -47,7 +46,6 @@ func TestPut(t *testing.T) {
 			}
 		})
 	}
-	fmt.Println(store)
 }
 
 func TestGet(t *testing.T) {
