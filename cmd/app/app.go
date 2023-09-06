@@ -12,6 +12,7 @@ import (
 type App struct {
 	dataLogger datalogger.TransactionLogger
 	router     *mux.Router
+	controller *controller.Controller
 }
 
 func New() (*App, error) {
@@ -24,10 +25,7 @@ func New() (*App, error) {
 	r := mux.NewRouter()
 	addRoutes(r, c)
 
-	dl.RestoreData(c.Storage)
-	dl.Run()
-
-	return &App{dataLogger: dl, router: r}, nil
+	return &App{dataLogger: dl, router: r, controller: c}, nil
 }
 
 func addRoutes(r *mux.Router, c *controller.Controller) {
@@ -37,5 +35,8 @@ func addRoutes(r *mux.Router, c *controller.Controller) {
 }
 
 func (a *App) Run() error {
+	a.dataLogger.RestoreData(a.controller.Storage)
+	a.dataLogger.Run()
+
 	return http.ListenAndServe(":8080", a.router)
 }
