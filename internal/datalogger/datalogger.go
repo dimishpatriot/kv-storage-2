@@ -19,6 +19,11 @@ const (
 	EventPut
 )
 
+const (
+	readPattern  = "%d\t%d\t%s\t%s"
+	writePattern = "%d\t%d\t%s\t%s\n"
+)
+
 type Event struct {
 	Sequence  uint64
 	EventType EventType
@@ -29,7 +34,6 @@ type Event struct {
 type TransactionLogger interface {
 	Err() <-chan error
 	ReadEvents() (<-chan Event, <-chan error)
-	RestoreDataFromFile()
 	Run()
 	WriteDelete(key string)
 	WritePut(key, value string)
@@ -47,17 +51,18 @@ type FileTransactionLogger struct {
 func New(logger *log.Logger, filename string, storage storage.Storage) (TransactionLogger, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o755)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open log file: %w", err)
+		return nil, fmt.Errorf("cant open log file: %w", err)
 	}
+	ftl := FileTransactionLogger{logger: logger, file: file, storage: storage}
+	ftl.restoreData()
 
-	return &FileTransactionLogger{logger: logger, file: file, storage: storage}, nil
+	return &ftl, nil
 }
 
-func (l *FileTransactionLogger) RestoreDataFromFile() {
+func (l *FileTransactionLogger) restoreData() {
 	l.logger.Println("restore data...")
 
 	var err error
-
 	events, errors := l.ReadEvents()
 	e, ok := Event{}, true
 
@@ -76,11 +81,10 @@ func (l *FileTransactionLogger) RestoreDataFromFile() {
 }
 
 func (l *FileTransactionLogger) Run() {
-	l.logger.Println("run...")
+	l.logger.Println("dataLogger run...")
 
 	events := make(chan Event, 16)
 	l.events = events
-
 	errors := make(chan error, 1)
 	l.errors = errors
 
@@ -89,17 +93,83 @@ func (l *FileTransactionLogger) Run() {
 
 		for e := range events {
 			l.lastSequence++
-			_, err := fmt.Fprintf(
-				l.file,
-				"%d\t%d\t%s\t%s\n",
-				l.lastSequence, e.EventType, e.Key, e.Value,
-			)
+			_, err := fmt.Fprintf(l.file, writePattern, l.lastSequence, e.EventType, e.Key, e.Value)
 			if err != nil {
 				errors <- err
 				return
 			}
+			if e.EventType == EventDelete {
+				if err = l.clearNotActualData(e.Key); err != nil {
+					errors <- err
+					return
+				}
+			}
 		}
 	}()
+}
+
+func (l *FileTransactionLogger) clearNotActualData(key string) error {
+	l.logger.Println("clear not actual data...")
+
+	tempFileName := "temp.log"
+	tempFile, err := os.OpenFile(tempFileName, os.O_WRONLY|os.O_CREATE, 0o755)
+	if err != nil {
+		return fmt.Errorf("cant create temp log file: %w", err)
+	}
+	defer tempFile.Close()
+
+	_, _ = l.file.Seek(0, 0) // seek to start!
+	if err = l.copyData(key, tempFile); err != nil {
+		return fmt.Errorf("cant copy data: %w", err)
+	}
+
+	l.file.Close()
+	if err = l.swapFiles(l.file.Name(), tempFileName); err != nil {
+		return fmt.Errorf("cant swap log files: %w", err)
+	}
+
+	l.file, err = os.OpenFile(l.file.Name(), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0o755)
+	if err != nil {
+		return fmt.Errorf("cant open new log file: %w", err)
+	}
+	_, _ = l.file.Seek(0, 2) // seek to end!
+	return nil
+}
+
+func (l *FileTransactionLogger) swapFiles(logFileName string, tempFileName string) error {
+	l.logger.Println("swap log files...")
+
+	if err := os.Remove(logFileName); err != nil {
+		return fmt.Errorf("cant remove old log file: %w", err)
+	}
+	if err := os.Rename(tempFileName, logFileName); err != nil {
+		return fmt.Errorf("cant rename temp log file: %w", err)
+	}
+	return nil
+}
+
+func (l *FileTransactionLogger) copyData(key string, tempFile *os.File) error {
+	l.logger.Println("coping log data...")
+
+	var err error
+	var e Event
+
+	scanner := bufio.NewScanner(l.file)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		_, err = fmt.Sscanf(line, readPattern, &e.Sequence, &e.EventType, &e.Key, &e.Value)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return fmt.Errorf("input parse error: %w", err)
+		}
+		if e.Key != key {
+			_, err = fmt.Fprintf(tempFile, writePattern, e.Sequence, e.EventType, e.Key, e.Value)
+			if err != nil {
+				return fmt.Errorf("cant save to temp file: %w", err)
+			}
+		}
+	}
+	return nil
 }
 
 func (l *FileTransactionLogger) ReadEvents() (<-chan Event, <-chan error) {
@@ -117,7 +187,7 @@ func (l *FileTransactionLogger) ReadEvents() (<-chan Event, <-chan error) {
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			_, err := fmt.Sscanf(line, "%d\t%d\t%s\t%s", &e.Sequence, &e.EventType, &e.Key, &e.Value)
+			_, err := fmt.Sscanf(line, readPattern, &e.Sequence, &e.EventType, &e.Key, &e.Value)
 			if err != nil && !errors.Is(err, io.EOF) {
 				outError <- fmt.Errorf("input parse error: %w", err)
 				return
@@ -158,5 +228,7 @@ func (l *FileTransactionLogger) WriteDelete(key string) {
 }
 
 func (l *FileTransactionLogger) Err() <-chan error {
+	l.logger.Println("getting errors channel...")
+
 	return l.errors
 }

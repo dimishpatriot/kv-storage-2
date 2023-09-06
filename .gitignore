@@ -108,5 +108,4 @@ fabric.properties
 *.vsix
 
 # Logs
-logs/
 *.log

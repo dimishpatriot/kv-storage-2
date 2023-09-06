@@ -38,14 +38,14 @@ func New() (*App, error) {
 	storage := localstorage.New()
 	logger.Println("storage created")
 
-	dataLogger, err := datalogger.New(logger, "transaction.log", storage)
+	dataLogger, err := datalogger.New(logger, "../../log/transaction.log", storage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create data logger: %w", err)
 	}
 	logger.Println("dataLogger created")
 
 	handler := dlhandler.New(logger, dataLogger, storage)
-	logger.Println("controller created")
+	logger.Println("handler created")
 
 	router := mux.NewRouter()
 	logger.Println("router created")
@@ -59,21 +59,18 @@ func New() (*App, error) {
 	}, nil
 }
 
-func (a *App) addRoutes() {
-	a.router.HandleFunc("/v1/{key}", a.handler.Put).Methods("PUT")
-	a.router.HandleFunc("/v1/{key}", a.handler.Get).Methods("GET")
-	a.router.HandleFunc("/v1/{key}", a.handler.Delete).Methods("DELETE")
+func (app *App) Run() error {
+	app.dataLogger.Run()
+	app.logger.Println("dataLogger ran")
+
+	app.addRoutes()
+	app.logger.Println("routes added")
+
+	return http.ListenAndServe(":8080", app.router)
 }
 
-func (a *App) Run() error {
-	a.addRoutes()
-	a.logger.Println("routes added")
-
-	a.dataLogger.RestoreDataFromFile()
-	a.logger.Println("data restored")
-
-	a.dataLogger.Run()
-	a.logger.Println("dataLogger ran")
-
-	return http.ListenAndServe(":8080", a.router)
+func (app *App) addRoutes() {
+	app.router.HandleFunc("/v1/{key}", app.handler.Put).Methods("PUT")
+	app.router.HandleFunc("/v1/{key}", app.handler.Get).Methods("GET")
+	app.router.HandleFunc("/v1/{key}", app.handler.Delete).Methods("DELETE")
 }
