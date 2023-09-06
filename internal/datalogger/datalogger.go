@@ -29,7 +29,7 @@ type Event struct {
 type TransactionLogger interface {
 	Err() <-chan error
 	ReadEvents() (<-chan Event, <-chan error)
-	RestoreData(storage.Storage)
+	RestoreDataFromFile()
 	Run()
 	WriteDelete(key string)
 	WritePut(key, value string)
@@ -41,18 +41,19 @@ type FileTransactionLogger struct {
 	lastSequence uint64
 	file         *os.File
 	logger       *log.Logger
+	storage      storage.Storage
 }
 
-func New(logger *log.Logger, filename string) (TransactionLogger, error) {
+func New(logger *log.Logger, filename string, storage storage.Storage) (TransactionLogger, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o755)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open log file: %w", err)
 	}
 
-	return &FileTransactionLogger{logger: logger, file: file}, nil
+	return &FileTransactionLogger{logger: logger, file: file, storage: storage}, nil
 }
 
-func (l *FileTransactionLogger) RestoreData(s storage.Storage) {
+func (l *FileTransactionLogger) RestoreDataFromFile() {
 	l.logger.Println("restore data...")
 
 	var err error
@@ -66,9 +67,9 @@ func (l *FileTransactionLogger) RestoreData(s storage.Storage) {
 		case e, ok = <-events:
 			switch e.EventType {
 			case EventDelete:
-				err = s.Delete(e.Key)
+				err = l.storage.Delete(e.Key)
 			case EventPut:
-				err = s.Put(e.Key, e.Value)
+				err = l.storage.Put(e.Key, e.Value)
 			}
 		}
 	}

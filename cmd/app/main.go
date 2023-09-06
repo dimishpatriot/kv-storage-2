@@ -6,8 +6,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/dimishpatriot/kv-storage/internal/controller"
-	"github.com/dimishpatriot/kv-storage/internal/logger/datalogger"
+	"github.com/dimishpatriot/kv-storage/internal/datalogger"
+	"github.com/dimishpatriot/kv-storage/internal/handler"
+	"github.com/dimishpatriot/kv-storage/internal/handler/dlhandler"
+	"github.com/dimishpatriot/kv-storage/internal/storage"
+	"github.com/dimishpatriot/kv-storage/internal/storage/localstorage"
 	"github.com/gorilla/mux"
 )
 
@@ -22,40 +25,51 @@ func main() {
 
 type App struct {
 	logger     *log.Logger
-	dataLogger datalogger.TransactionLogger
 	router     *mux.Router
-	controller *controller.Controller
+	dataLogger datalogger.TransactionLogger
+	handler    handler.Handler
+	storage    storage.Storage
 }
 
 func New() (*App, error) {
-	l := log.New(os.Stdout, "INFO:", log.Lshortfile|log.Ltime|log.Lmicroseconds|log.Ldate)
+	logger := log.New(os.Stdout, "INFO:", log.Lshortfile|log.Ltime|log.Lmicroseconds|log.Ldate)
+	logger.Println("logger created")
 
-	dl, err := datalogger.New(l, "transaction.log")
+	storage := localstorage.New()
+	logger.Println("storage created")
+
+	dataLogger, err := datalogger.New(logger, "transaction.log", storage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create data logger: %w", err)
 	}
-	l.Println("dataLogger created")
+	logger.Println("dataLogger created")
 
-	c := controller.New(l, dl)
-	l.Println("controller created")
+	handler := dlhandler.New(logger, dataLogger, storage)
+	logger.Println("controller created")
 
-	r := mux.NewRouter()
-	l.Println("router created")
+	router := mux.NewRouter()
+	logger.Println("router created")
 
-	return &App{dataLogger: dl, router: r, controller: c, logger: l}, nil
+	return &App{
+		dataLogger: dataLogger,
+		handler:    handler,
+		logger:     logger,
+		router:     router,
+		storage:    storage,
+	}, nil
 }
 
 func (a *App) addRoutes() {
-	a.router.HandleFunc("/v1/{key}", a.controller.PutHandler).Methods("PUT")
-	a.router.HandleFunc("/v1/{key}", a.controller.GetHandler).Methods("GET")
-	a.router.HandleFunc("/v1/{key}", a.controller.DeleteHandler).Methods("DELETE")
+	a.router.HandleFunc("/v1/{key}", a.handler.Put).Methods("PUT")
+	a.router.HandleFunc("/v1/{key}", a.handler.Get).Methods("GET")
+	a.router.HandleFunc("/v1/{key}", a.handler.Delete).Methods("DELETE")
 }
 
 func (a *App) Run() error {
 	a.addRoutes()
 	a.logger.Println("routes added")
 
-	a.dataLogger.RestoreData(a.controller.Storage)
+	a.dataLogger.RestoreDataFromFile()
 	a.logger.Println("data restored")
 
 	a.dataLogger.Run()
