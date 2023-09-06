@@ -3,6 +3,7 @@ package controller
 import (
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -21,13 +22,14 @@ var (
 )
 
 type Controller struct {
-	logger  datalogger.TransactionLogger
-	Storage storage.Storage
+	logger     *log.Logger
+	dataLogger datalogger.TransactionLogger
+	Storage    storage.Storage
 }
 
-func New(logger datalogger.TransactionLogger) *Controller {
+func New(logger *log.Logger, dataLogger datalogger.TransactionLogger) *Controller {
 	s := localstorage.New()
-	return &Controller{logger: logger, Storage: s}
+	return &Controller{dataLogger: dataLogger, Storage: s, logger: logger}
 }
 
 func (c *Controller) PutHandler(w http.ResponseWriter, r *http.Request) {
@@ -41,21 +43,24 @@ func (c *Controller) PutHandler(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest)
 	}
 
-	value, err := io.ReadAll(r.Body)
+	bValue, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w,
 			err.Error(),
 			http.StatusInternalServerError)
 		return
 	}
-	err = checkValue(string(value))
+
+	value := string(bValue)
+
+	err = checkValue(value)
 	if err != nil {
 		http.Error(w,
 			err.Error(),
 			http.StatusBadRequest)
 	}
 
-	err = c.Storage.Put(key, string(value))
+	err = c.Storage.Put(key, value)
 	if err != nil {
 		http.Error(w,
 			err.Error(),
@@ -63,7 +68,8 @@ func (c *Controller) PutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c.logger.WritePut(key, string(value))
+	c.logger.Printf("put: {%s: %s}\n", key, value)
+	c.dataLogger.WritePut(key, value)
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -92,6 +98,7 @@ func (c *Controller) GetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	c.logger.Printf("get: {%s: %s}\n", key, value)
 	_, _ = w.Write([]byte(value))
 }
 
@@ -120,7 +127,8 @@ func (c *Controller) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c.logger.WriteDelete(key)
+	c.logger.Printf("delete: {%s}\n", key)
+	c.dataLogger.WriteDelete(key)
 	w.WriteHeader(http.StatusOK)
 }
 
