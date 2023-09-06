@@ -1,11 +1,14 @@
-package storage
+package localstorage
 
 import (
 	"testing"
 )
 
+var store *LocalStorage
+
 func setupTest(tb testing.TB) func(tb testing.TB) {
 	// run before test
+	store = New()
 	store.m = map[string]string{
 		"one":        "ONE",
 		"0123456789": "numbers",
@@ -38,7 +41,7 @@ func TestPut(t *testing.T) {
 			after := setupTest(t)
 			defer after(t)
 
-			if err := Put(tt.args.k, tt.args.v); (err != nil) != tt.wantErr {
+			if err := store.Put(tt.args.k, tt.args.v); (err != nil) != tt.wantErr {
 				t.Errorf("Put() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -64,7 +67,7 @@ func TestGet(t *testing.T) {
 			after := setupTest(t)
 			defer after(t)
 
-			got, err := Get(tt.args.k)
+			got, err := store.Get(tt.args.k)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Get() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -93,7 +96,7 @@ func TestDelete(t *testing.T) {
 			after := setupTest(t)
 			defer after(t)
 
-			if err := Delete(tt.args.k); (err != nil) != tt.wantErr {
+			if err := store.Delete(tt.args.k); (err != nil) != tt.wantErr {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

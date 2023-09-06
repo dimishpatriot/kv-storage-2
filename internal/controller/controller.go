@@ -1,4 +1,4 @@
-package main
+package controller
 
 import (
 	"errors"
@@ -6,11 +6,31 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/dimishpatriot/kv-storage/internal/logger/datalogger"
 	"github.com/dimishpatriot/kv-storage/internal/storage"
+	"github.com/dimishpatriot/kv-storage/internal/storage/localstorage"
 	"github.com/gorilla/mux"
 )
 
-func PutHandler(w http.ResponseWriter, r *http.Request) {
+var (
+	ErrorEmptyKey                   = errors.New("empty key")
+	ErrorLongKey                    = errors.New("key length > 64 byte")
+	ErrorKeyContainsForbiddenSymbol = errors.New("forbidden symbol in key")
+	ErrorEmptyValue                 = errors.New("empty value")
+	ErrorLongValue                  = errors.New("value length > 128 byte")
+)
+
+type Controller struct {
+	logger  datalogger.TransactionLogger
+	Storage storage.Storage
+}
+
+func New(logger datalogger.TransactionLogger) *Controller {
+	s := localstorage.New()
+	return &Controller{logger: logger, Storage: s}
+}
+
+func (c *Controller) PutHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	key := mux.Vars(r)["key"]
@@ -35,7 +55,7 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest)
 	}
 
-	err = storage.Put(key, string(value))
+	err = c.Storage.Put(key, string(value))
 	if err != nil {
 		http.Error(w,
 			err.Error(),
@@ -43,11 +63,11 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	l.WritePut(key, string(value))
+	c.logger.WritePut(key, string(value))
 	w.WriteHeader(http.StatusCreated)
 }
 
-func GetHandler(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) GetHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	key := mux.Vars(r)["key"]
@@ -58,7 +78,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest)
 	}
 
-	value, err := storage.Get(key)
+	value, err := c.Storage.Get(key)
 	if errors.Is(err, storage.ErrorNoSuchKey) {
 		http.Error(w,
 			err.Error(),
@@ -75,7 +95,7 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(value))
 }
 
-func DeleteHandler(w http.ResponseWriter, r *http.Request) {
+func (c *Controller) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	key := mux.Vars(r)["key"]
@@ -86,7 +106,7 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest)
 	}
 
-	err = storage.Delete(key)
+	err = c.Storage.Delete(key)
 	if errors.Is(err, storage.ErrorNoSuchKey) {
 		http.Error(w,
 			err.Error(),
@@ -100,17 +120,9 @@ func DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	l.WriteDelete(key)
+	c.logger.WriteDelete(key)
 	w.WriteHeader(http.StatusOK)
 }
-
-var (
-	ErrorEmptyKey                   = errors.New("empty key")
-	ErrorLongKey                    = errors.New("key length > 64 byte")
-	ErrorKeyContainsForbiddenSymbol = errors.New("forbidden symbol in key")
-	ErrorEmptyValue                 = errors.New("empty value")
-	ErrorLongValue                  = errors.New("value length > 128 byte")
-)
 
 func checkKey(key string) error {
 	if key == "" {

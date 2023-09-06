@@ -1,4 +1,4 @@
-package ftl
+package datalogger
 
 import (
 	"bufio"
@@ -7,17 +7,41 @@ import (
 	"io"
 	"os"
 
-	"github.com/dimishpatriot/kv-storage/internal/logger"
+	"github.com/dimishpatriot/kv-storage/internal/storage"
 )
 
+type EventType byte
+
+const (
+	_                     = iota
+	EventDelete EventType = iota
+	EventPut
+)
+
+type Event struct {
+	Sequence  uint64
+	EventType EventType
+	Key       string
+	Value     string
+}
+
+type TransactionLogger interface {
+	Err() <-chan error
+	ReadEvents() (<-chan Event, <-chan error)
+	RestoreData(storage.Storage)
+	Run()
+	WriteDelete(key string)
+	WritePut(key, value string)
+}
+
 type FileTransactionLogger struct {
-	events       chan<- logger.Event
+	events       chan<- Event
 	errors       <-chan error
 	lastSequence uint64
 	file         *os.File
 }
 
-func NewFileTransactionLogger(filename string) (logger.TransactionLogger, error) {
+func New(filename string) (TransactionLogger, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o755)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open log file: %w", err)
@@ -26,8 +50,28 @@ func NewFileTransactionLogger(filename string) (logger.TransactionLogger, error)
 	return &FileTransactionLogger{file: file}, nil
 }
 
+func (l *FileTransactionLogger) RestoreData(s storage.Storage) {
+	var err error
+
+	events, errors := l.ReadEvents()
+	e, ok := Event{}, true
+
+	for ok && err == nil {
+		select {
+		case err, ok = <-errors:
+		case e, ok = <-events:
+			switch e.EventType {
+			case EventDelete:
+				err = s.Delete(e.Key)
+			case EventPut:
+				err = s.Put(e.Key, e.Value)
+			}
+		}
+	}
+}
+
 func (l *FileTransactionLogger) Run() {
-	events := make(chan logger.Event, 16)
+	events := make(chan Event, 16)
 	l.events = events
 
 	errors := make(chan error, 1)
@@ -51,13 +95,13 @@ func (l *FileTransactionLogger) Run() {
 	}()
 }
 
-func (l *FileTransactionLogger) ReadEvents() (<-chan logger.Event, <-chan error) {
+func (l *FileTransactionLogger) ReadEvents() (<-chan Event, <-chan error) {
 	scanner := bufio.NewScanner(l.file)
-	outEvent := make(chan logger.Event)
+	outEvent := make(chan Event)
 	outError := make(chan error, 1)
 
 	go func() {
-		var e logger.Event
+		var e Event
 		defer close(outEvent)
 		defer close(outError)
 
@@ -89,14 +133,14 @@ func (l *FileTransactionLogger) ReadEvents() (<-chan logger.Event, <-chan error)
 }
 
 func (l *FileTransactionLogger) WritePut(key, value string) {
-	l.events <- logger.Event{
-		EventType: logger.EventPut, Key: key, Value: value,
+	l.events <- Event{
+		EventType: EventPut, Key: key, Value: value,
 	}
 }
 
 func (l *FileTransactionLogger) WriteDelete(key string) {
-	l.events <- logger.Event{
-		EventType: logger.EventDelete, Key: key,
+	l.events <- Event{
+		EventType: EventDelete, Key: key,
 	}
 }
 
