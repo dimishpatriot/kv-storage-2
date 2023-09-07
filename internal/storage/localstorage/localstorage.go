@@ -6,20 +6,28 @@ import (
 	"github.com/dimishpatriot/kv-storage/internal/storage"
 )
 
+type data = map[string]string
+
 type LocalStorage struct {
 	sync.RWMutex
-	m map[string]string
+	data data
 }
 
-func New() *LocalStorage {
-	m := make(map[string]string)
+func New() storage.Storage {
+	d := make(map[string]string)
 
-	return &LocalStorage{m: m}
+	return &LocalStorage{data: d}
+}
+
+func (ls *LocalStorage) set(data data) {
+	ls.Lock()
+	ls.data = data
+	ls.Unlock()
 }
 
 func (ls *LocalStorage) Put(k string, v string) error {
 	ls.Lock()
-	ls.m[k] = v
+	ls.data[k] = v
 	ls.Unlock()
 
 	return nil
@@ -27,7 +35,7 @@ func (ls *LocalStorage) Put(k string, v string) error {
 
 func (ls *LocalStorage) Get(k string) (string, error) {
 	ls.RLock()
-	v, ok := ls.m[k]
+	v, ok := ls.data[k]
 	ls.RUnlock()
 	if !ok {
 		return "", storage.ErrorNoSuchKey
@@ -39,10 +47,10 @@ func (ls *LocalStorage) Get(k string) (string, error) {
 func (ls *LocalStorage) Delete(k string) error {
 	ls.Lock()
 	defer ls.Unlock()
-	if _, ok := ls.m[k]; !ok {
+	if _, ok := ls.data[k]; !ok {
 		return storage.ErrorNoSuchKey
 	}
-	delete(ls.m, k)
+	delete(ls.data, k)
 
 	return nil
 }

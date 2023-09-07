@@ -7,15 +7,15 @@ import (
 var store *LocalStorage
 
 func setupTest(tb testing.TB) func(tb testing.TB) {
-	// run before test
-	store = New()
-	store.m = map[string]string{
+	// run before each test
+	store = New().(*LocalStorage)
+	store.set(map[string]string{
 		"one":        "ONE",
 		"0123456789": "numbers",
-	}
+	})
 
 	return func(tb testing.TB) {
-		// run after test
+		// run after each test
 		// ...
 	}
 }
@@ -33,7 +33,7 @@ func TestPut(t *testing.T) {
 		{name: "correct key", args: args{k: "correct key", v: "correct value"}, wantErr: false},
 		{name: "existing key", args: args{k: "one", v: "NEW ONE"}, wantErr: false},
 		{name: "one symbol key", args: args{k: "K", v: "correct value"}, wantErr: false},
-		{name: "non alphabet key", args: args{k: "/~!@#$%^&*()_+", v: "correct value"}, wantErr: false},
+		{name: "non alphabet key", args: args{k: "~!@#$%^&*()_+", v: "correct value"}, wantErr: false},
 		{name: "number string key", args: args{k: "0123456789", v: "correct value"}, wantErr: false},
 	}
 	for _, tt := range tests {
