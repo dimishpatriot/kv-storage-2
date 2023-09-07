@@ -1,4 +1,4 @@
-package datalogger
+package filelogger
 
 import (
 	"bufio"
@@ -9,14 +9,7 @@ import (
 	"os"
 
 	"github.com/dimishpatriot/kv-storage/internal/storage"
-)
-
-type EventType byte
-
-const (
-	_                     = iota
-	EventDelete EventType = iota
-	EventPut
+	"github.com/dimishpatriot/kv-storage/internal/transactionlogger"
 )
 
 const (
@@ -24,23 +17,8 @@ const (
 	writePattern = "%d\t%d\t%s\t%s\n"
 )
 
-type Event struct {
-	Sequence  uint64
-	EventType EventType
-	Key       string
-	Value     string
-}
-
-type TransactionLogger interface {
-	Err() <-chan error
-	ReadEvents() (<-chan Event, <-chan error)
-	Run()
-	WriteDelete(key string)
-	WritePut(key, value string)
-}
-
 type FileTransactionLogger struct {
-	events       chan<- Event
+	events       chan<- transactionlogger.Event
 	errors       <-chan error
 	lastSequence uint64
 	file         *os.File
@@ -48,7 +26,7 @@ type FileTransactionLogger struct {
 	storage      storage.Storage
 }
 
-func New(logger *log.Logger, filename string, storage storage.Storage) (TransactionLogger, error) {
+func New(logger *log.Logger, filename string, storage storage.Storage) (transactionlogger.TransactionLogger, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o755)
 	if err != nil {
 		return nil, fmt.Errorf("cant open log file: %w", err)
@@ -64,16 +42,16 @@ func (l *FileTransactionLogger) restoreData() {
 
 	var err error
 	events, errors := l.ReadEvents()
-	e, ok := Event{}, true
+	e, ok := transactionlogger.Event{}, true
 
 	for ok && err == nil {
 		select {
 		case err, ok = <-errors:
 		case e, ok = <-events:
 			switch e.EventType {
-			case EventDelete:
+			case transactionlogger.EventDelete:
 				err = l.storage.Delete(e.Key)
-			case EventPut:
+			case transactionlogger.EventPut:
 				err = l.storage.Put(e.Key, e.Value)
 			}
 		}
@@ -83,7 +61,7 @@ func (l *FileTransactionLogger) restoreData() {
 func (l *FileTransactionLogger) Run() {
 	l.logger.Println("dataLogger run...")
 
-	events := make(chan Event, 16)
+	events := make(chan transactionlogger.Event, 16)
 	l.events = events
 	errors := make(chan error, 1)
 	l.errors = errors
@@ -98,7 +76,7 @@ func (l *FileTransactionLogger) Run() {
 				errors <- err
 				return
 			}
-			if e.EventType == EventDelete {
+			if e.EventType == transactionlogger.EventDelete {
 				if err = l.clearNotActualData(e.Key); err != nil {
 					errors <- err
 					return
@@ -152,7 +130,7 @@ func (l *FileTransactionLogger) copyData(key string, tempFile *os.File) error {
 	l.logger.Println("coping log data...")
 
 	var err error
-	var e Event
+	var e transactionlogger.Event
 
 	scanner := bufio.NewScanner(l.file)
 	for scanner.Scan() {
@@ -172,15 +150,15 @@ func (l *FileTransactionLogger) copyData(key string, tempFile *os.File) error {
 	return nil
 }
 
-func (l *FileTransactionLogger) ReadEvents() (<-chan Event, <-chan error) {
+func (l *FileTransactionLogger) ReadEvents() (<-chan transactionlogger.Event, <-chan error) {
 	l.logger.Println("read events...")
 
 	scanner := bufio.NewScanner(l.file)
-	outEvent := make(chan Event)
+	outEvent := make(chan transactionlogger.Event)
 	outError := make(chan error, 1)
 
 	go func() {
-		var e Event
+		var e transactionlogger.Event
 		defer close(outEvent)
 		defer close(outError)
 
@@ -214,16 +192,16 @@ func (l *FileTransactionLogger) ReadEvents() (<-chan Event, <-chan error) {
 func (l *FileTransactionLogger) WritePut(key, value string) {
 	l.logger.Printf("write put: {%s: %s}", key, value)
 
-	l.events <- Event{
-		EventType: EventPut, Key: key, Value: value,
+	l.events <- transactionlogger.Event{
+		EventType: transactionlogger.EventPut, Key: key, Value: value,
 	}
 }
 
 func (l *FileTransactionLogger) WriteDelete(key string) {
 	l.logger.Printf("write delete {%s}", key)
 
-	l.events <- Event{
-		EventType: EventDelete, Key: key,
+	l.events <- transactionlogger.Event{
+		EventType: transactionlogger.EventDelete, Key: key,
 	}
 }
 

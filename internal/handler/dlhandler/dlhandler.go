@@ -7,19 +7,19 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/dimishpatriot/kv-storage/internal/datalogger"
 	"github.com/dimishpatriot/kv-storage/internal/handler"
 	"github.com/dimishpatriot/kv-storage/internal/storage"
+	"github.com/dimishpatriot/kv-storage/internal/transactionlogger"
 	"github.com/gorilla/mux"
 )
 
 type DataLoggerHandler struct {
 	logger     *log.Logger
-	dataLogger datalogger.TransactionLogger
+	dataLogger transactionlogger.TransactionLogger
 	storage    storage.Storage
 }
 
-func New(logger *log.Logger, dataLogger datalogger.TransactionLogger, storage storage.Storage) handler.Handler {
+func New(logger *log.Logger, dataLogger transactionlogger.TransactionLogger, storage storage.Storage) handler.Handler {
 	return &DataLoggerHandler{
 		dataLogger: dataLogger,
 		logger:     logger,

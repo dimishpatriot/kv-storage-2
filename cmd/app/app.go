@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"fmt"
@@ -6,27 +6,19 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/dimishpatriot/kv-storage/internal/datalogger"
 	"github.com/dimishpatriot/kv-storage/internal/handler"
 	"github.com/dimishpatriot/kv-storage/internal/handler/dlhandler"
 	"github.com/dimishpatriot/kv-storage/internal/storage"
 	"github.com/dimishpatriot/kv-storage/internal/storage/localstorage"
+	"github.com/dimishpatriot/kv-storage/internal/transactionlogger"
+	"github.com/dimishpatriot/kv-storage/internal/transactionlogger/filelogger"
 	"github.com/gorilla/mux"
 )
-
-func main() {
-	app, err := New()
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-	log.Fatal(app.Run())
-}
 
 type App struct {
 	logger     *log.Logger
 	router     *mux.Router
-	dataLogger datalogger.TransactionLogger
+	dataLogger transactionlogger.TransactionLogger
 	handler    handler.Handler
 	storage    storage.Storage
 }
@@ -35,14 +27,16 @@ func New() (*App, error) {
 	logger := log.New(os.Stdout, "INFO:", log.Lshortfile|log.Ltime|log.Lmicroseconds|log.Ldate)
 	logger.Println("logger created")
 
+	// TODO: add selection of storage & logger ->
 	storage := localstorage.New()
 	logger.Println("storage created")
 
-	dataLogger, err := datalogger.New(logger, "../../log/transaction.log", storage)
+	dataLogger, err := filelogger.New(logger, "transaction.log", storage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create data logger: %w", err)
 	}
 	logger.Println("dataLogger created")
+	// TODO: <------------
 
 	handler := dlhandler.New(logger, dataLogger, storage)
 	logger.Println("handler created")
