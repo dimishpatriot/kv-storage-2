@@ -28,10 +28,7 @@ func New(logger *log.Logger, dataLogger transactionlogger.TransactionLogger, sto
 }
 
 func (dh *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
-	var err error
-
-	key := mux.Vars(r)["key"]
-	err = checkKey(key)
+	key, err := dh.getKeyFromRequest(r)
 	if err != nil {
 		http.Error(w,
 			err.Error(),
@@ -68,10 +65,7 @@ func (dh *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
 }
 
 func (dh *DataLoggerHandler) Get(w http.ResponseWriter, r *http.Request) {
-	var err error
-
-	key := mux.Vars(r)["key"]
-	err = checkKey(key)
+	key, err := dh.getKeyFromRequest(r)
 	if err != nil {
 		http.Error(w,
 			err.Error(),
@@ -97,10 +91,7 @@ func (dh *DataLoggerHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 func (dh *DataLoggerHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	var err error
-
-	key := mux.Vars(r)["key"]
-	err = checkKey(key)
+	key, err := dh.getKeyFromRequest(r)
 	if err != nil {
 		http.Error(w,
 			err.Error(),
@@ -124,6 +115,11 @@ func (dh *DataLoggerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	dh.logger.Printf("delete: {%s}\n", key)
 	dh.dataLogger.WriteDelete(key)
 	w.WriteHeader(http.StatusOK)
+}
+
+func (dh *DataLoggerHandler) getKeyFromRequest(r *http.Request) (string, error) {
+	key := mux.Vars(r)["key"]
+	return key, checkKey(key)
 }
 
 func checkKey(key string) error {

@@ -14,9 +14,9 @@ type LocalStorage struct {
 }
 
 func New() storage.Storage {
-	d := make(map[string]string)
+	data := make(map[string]string)
 
-	return &LocalStorage{data: d}
+	return &LocalStorage{data: data}
 }
 
 func (ls *LocalStorage) Put(k string, v string) error {
