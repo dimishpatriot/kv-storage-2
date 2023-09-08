@@ -1,18 +1,18 @@
-package localstorage
+package localstorage_test
 
 import (
 	"testing"
+
+	"github.com/dimishpatriot/kv-storage/internal/storage/localstorage"
 )
 
-var store *LocalStorage
+var store *localstorage.LocalStorage
 
 func setupTest(tb testing.TB) func(tb testing.TB) {
 	// run before each test
-	store = New().(*LocalStorage)
-	store.set(map[string]string{
-		"one":        "ONE",
-		"0123456789": "numbers",
-	})
+	store = localstorage.New().(*localstorage.LocalStorage)
+	_ = store.Put("one", "ONE")
+	_ = store.Put("0123456789", "numbers")
 
 	return func(tb testing.TB) {
 		// run after each test

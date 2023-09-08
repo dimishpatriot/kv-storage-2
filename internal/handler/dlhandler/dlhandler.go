@@ -27,7 +27,7 @@ func New(logger *log.Logger, dataLogger transactionlogger.TransactionLogger, sto
 	}
 }
 
-func (c *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
+func (dh *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	key := mux.Vars(r)["key"]
@@ -47,7 +47,6 @@ func (c *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
 	}
 
 	value := string(bValue)
-
 	err = checkValue(value)
 	if err != nil {
 		http.Error(w,
@@ -55,7 +54,7 @@ func (c *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest)
 	}
 
-	err = c.storage.Put(key, value)
+	err = dh.storage.Put(key, value)
 	if err != nil {
 		http.Error(w,
 			err.Error(),
@@ -63,12 +62,12 @@ func (c *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c.logger.Printf("put: {%s: %s}\n", key, value)
-	c.dataLogger.WritePut(key, value)
+	dh.logger.Printf("put: {%s: %s}\n", key, value)
+	dh.dataLogger.WritePut(key, value)
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (c *DataLoggerHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (dh *DataLoggerHandler) Get(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	key := mux.Vars(r)["key"]
@@ -79,7 +78,7 @@ func (c *DataLoggerHandler) Get(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest)
 	}
 
-	value, err := c.storage.Get(key)
+	value, err := dh.storage.Get(key)
 	if errors.Is(err, storage.ErrorNoSuchKey) {
 		http.Error(w,
 			err.Error(),
@@ -93,11 +92,11 @@ func (c *DataLoggerHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c.logger.Printf("get: {%s: %s}\n", key, value)
+	dh.logger.Printf("get: {%s: %s}\n", key, value)
 	_, _ = w.Write([]byte(value))
 }
 
-func (c *DataLoggerHandler) Delete(w http.ResponseWriter, r *http.Request) {
+func (dh *DataLoggerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	key := mux.Vars(r)["key"]
@@ -108,7 +107,7 @@ func (c *DataLoggerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 			http.StatusBadRequest)
 	}
 
-	err = c.storage.Delete(key)
+	err = dh.storage.Delete(key)
 	if errors.Is(err, storage.ErrorNoSuchKey) {
 		http.Error(w,
 			err.Error(),
@@ -122,8 +121,8 @@ func (c *DataLoggerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c.logger.Printf("delete: {%s}\n", key)
-	c.dataLogger.WriteDelete(key)
+	dh.logger.Printf("delete: {%s}\n", key)
+	dh.dataLogger.WriteDelete(key)
 	w.WriteHeader(http.StatusOK)
 }
 

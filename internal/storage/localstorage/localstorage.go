@@ -19,12 +19,6 @@ func New() storage.Storage {
 	return &LocalStorage{data: d}
 }
 
-func (ls *LocalStorage) set(data data) {
-	ls.Lock()
-	ls.data = data
-	ls.Unlock()
-}
-
 func (ls *LocalStorage) Put(k string, v string) error {
 	ls.Lock()
 	ls.data[k] = v
