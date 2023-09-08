@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dimishpatriot/kv-storage/internal/handler"
 	"github.com/dimishpatriot/kv-storage/internal/handler/dlhandler"
 	"github.com/dimishpatriot/kv-storage/internal/storage"
 	"github.com/dimishpatriot/kv-storage/internal/storage/localstorage"
@@ -21,7 +22,7 @@ var (
 	logger     *log.Logger
 	dataLogger transactionlogger.TransactionLogger
 	store      storage.Storage
-	handler    *dlhandler.DataLoggerHandler
+	dlh        handler.Handler
 )
 
 func TestMain(m *testing.M) {
@@ -33,7 +34,7 @@ func TestMain(m *testing.M) {
 
 func setupTest(tb testing.TB) func(tb testing.TB) {
 	store = localstorage.New()
-	handler = dlhandler.New(logger, dataLogger, store).(*dlhandler.DataLoggerHandler)
+	dlh = dlhandler.New(logger, dataLogger, store)
 
 	// prepare test data
 	_ = store.Put("1", "ONE")
@@ -81,7 +82,7 @@ func TestDataLoggerHandler_Put(t *testing.T) {
 					"key": tt.args.key,
 				})
 
-			handler.Put(res, r)
+			dlh.Put(res, r)
 			if res.Code != tt.wantStatus {
 				t.Errorf("got status %d, wont %d", res.Code, tt.wantStatus)
 			}
@@ -122,7 +123,7 @@ func TestDataLoggerHandler_Get(t *testing.T) {
 					"key": tt.args.key,
 				})
 
-			handler.Get(res, r)
+			dlh.Get(res, r)
 
 			if res.Code != tt.want.status {
 				t.Errorf("got status %d, wont %d", res.Code, tt.want.status)
@@ -168,7 +169,7 @@ func TestDataLoggerHandler_Delete(t *testing.T) {
 					"key": tt.args.key,
 				})
 
-			handler.Delete(res, r)
+			dlh.Delete(res, r)
 
 			if res.Code != tt.want.status {
 				t.Errorf("got status %d, wont %d", res.Code, tt.want.status)
