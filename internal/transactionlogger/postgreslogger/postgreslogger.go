@@ -26,7 +26,11 @@ type PostgresDBParams struct {
 	password string
 }
 
-func New(logger *log.Logger, dbParams PostgresDBParams, storage storage.Storage) (transactionlogger.TransactionLogger, error) {
+func New(
+	logger *log.Logger,
+	dbParams PostgresDBParams,
+	storage storage.Storage,
+) (transactionlogger.TransactionLogger, error) {
 	connStr := fmt.Sprintf(
 		"host=%s dbname=%s user=%s password=%s",
 		dbParams.host, dbParams.name, dbParams.user, dbParams.password,

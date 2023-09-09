@@ -19,7 +19,11 @@ type DataLoggerHandler struct {
 	storage    storage.Storage
 }
 
-func New(logger *log.Logger, dataLogger transactionlogger.TransactionLogger, storage storage.Storage) handler.Handler {
+func New(
+	logger *log.Logger,
+	dataLogger transactionlogger.TransactionLogger,
+	storage storage.Storage,
+) handler.Handler {
 	return &DataLoggerHandler{
 		dataLogger: dataLogger,
 		logger:     logger,

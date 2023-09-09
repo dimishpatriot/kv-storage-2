@@ -29,11 +29,31 @@ func TestPut(t *testing.T) {
 		args    args
 		wantErr error
 	}{
-		{name: "correct key", args: args{key: "correct key", value: "correct value"}, wantErr: nil},
-		{name: "existing key", args: args{key: "one", value: "NEW ONE"}, wantErr: nil},
-		{name: "one symbol key", args: args{key: "K", value: "correct value"}, wantErr: nil},
-		{name: "non alphabet key", args: args{key: "~!@#$%^&*()_+", value: "correct value"}, wantErr: nil},
-		{name: "number string key", args: args{key: "0123456789", value: "correct value"}, wantErr: nil},
+		{
+			name:    "correct key",
+			args:    args{key: "correct key", value: "correct value"},
+			wantErr: nil,
+		},
+		{
+			name:    "existing key",
+			args:    args{key: "one", value: "NEW ONE"},
+			wantErr: nil,
+		},
+		{
+			name:    "one symbol key",
+			args:    args{key: "K", value: "correct value"},
+			wantErr: nil,
+		},
+		{
+			name:    "non alphabet key",
+			args:    args{key: "~!@#$%^&*()_+", value: "correct value"},
+			wantErr: nil,
+		},
+		{
+			name:    "number string key",
+			args:    args{key: "0123456789", value: "correct value"},
+			wantErr: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -61,9 +81,21 @@ func TestGet(t *testing.T) {
 		args args
 		want want
 	}{
-		{name: "common key", args: args{key: "one"}, want: want{value: "ONE", err: nil}},
-		{name: "number string key", args: args{key: "0123456789"}, want: want{value: "numbers", err: nil}},
-		{name: "absent key", args: args{key: "absent"}, want: want{value: "", err: storage.ErrorNoSuchKey}},
+		{
+			name: "common key",
+			args: args{key: "one"},
+			want: want{value: "ONE", err: nil},
+		},
+		{
+			name: "number string key",
+			args: args{key: "0123456789"},
+			want: want{value: "numbers", err: nil},
+		},
+		{
+			name: "absent key",
+			args: args{key: "absent"},
+			want: want{value: "", err: storage.ErrorNoSuchKey},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

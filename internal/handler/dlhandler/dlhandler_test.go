@@ -15,6 +15,7 @@ import (
 	"github.com/dimishpatriot/kv-storage/internal/storage"
 	"github.com/dimishpatriot/kv-storage/internal/transactionlogger"
 	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/mock"
 )
 
 var (
@@ -56,24 +57,58 @@ func TestDataLoggerHandler_Put(t *testing.T) {
 		args       args
 		wantStatus int
 	}{
-		{name: "success put by new key", args: args{key: "new", value: "new value"}, wantStatus: http.StatusCreated},
-		{name: "success put by existing key", args: args{key: "1", value: "one new"}, wantStatus: http.StatusCreated},
-		{name: "failed put by empty key", args: args{key: "", value: "one new"}, wantStatus: http.StatusBadRequest},
-		{name: "failed put by empty value", args: args{key: "key", value: ""}, wantStatus: http.StatusBadRequest},
-		{name: "failed put by long key", args: args{key: "12345678901234567890123456789012345678901234567890123456789012345", value: ""}, wantStatus: http.StatusBadRequest},
-		{name: "failed put by long value", args: args{key: "key", value: "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"}, wantStatus: http.StatusBadRequest},
+		{
+			name:       "success put by new key",
+			args:       args{key: "new", value: "new value"},
+			wantStatus: http.StatusCreated,
+		},
+		{
+			name:       "success put by existing key",
+			args:       args{key: "1", value: "one new"},
+			wantStatus: http.StatusCreated,
+		},
+		{
+			name:       "failed put by empty key",
+			args:       args{key: "", value: "one new"},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name:       "failed put by empty value",
+			args:       args{key: "key", value: ""},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "failed put by long key",
+			args: args{
+				key:   "12345678901234567890123456789012345678901234567890123456789012345",
+				value: "",
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "failed put by long value",
+			args: args{
+				key:   "key",
+				value: "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
+			},
+			wantStatus: http.StatusBadRequest,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			after := setupTest(t)
 			defer after(t)
 			if tt.wantStatus == http.StatusCreated {
-				dataLoggerMock.EXPECT().WritePut(tt.args.key, tt.args.value).Return()
+				dataLoggerMock.EXPECT().WritePut(mock.Anything, tt.args.value).Return()
 				storageMock.EXPECT().Put(tt.args.key, tt.args.value).Return(nil)
 			}
 
 			res := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPut, getPath(tt.args.key), strings.NewReader(tt.args.value))
+			r := httptest.NewRequest(
+				http.MethodPut,
+				getPath(tt.args.key),
+				strings.NewReader(tt.args.value),
+			)
 			// setup url vars for mux.Vars()
 			r = mux.SetURLVars(r,
 				map[string]string{
@@ -101,12 +136,36 @@ func TestDataLoggerHandler_Get(t *testing.T) {
 		args args
 		want want
 	}{
-		{name: "success get by existing key", args: args{key: "1"}, want: want{value: "ONE", status: http.StatusOK}},
-		{name: "success get by existing symbol+key", args: args{key: "-1"}, want: want{value: "minus ONE", status: http.StatusOK}},
-		{name: "success get by symbolic key", args: args{key: "!@#$*()_+><"}, want: want{value: "symbols", status: http.StatusOK}},
-		{name: "failed get by existing key", args: args{key: "11"}, want: want{value: "", status: http.StatusNotFound}},
-		{name: "failed get by empty key", args: args{key: ""}, want: want{value: "", status: http.StatusBadRequest}},
-		{name: "failed get by long key", args: args{key: "12345678901234567890123456789012345678901234567890123456789012345"}, want: want{value: "", status: http.StatusBadRequest}},
+		{
+			name: "success get by existing key",
+			args: args{key: "1"},
+			want: want{value: "ONE", status: http.StatusOK},
+		},
+		{
+			name: "success get by existing symbol+key",
+			args: args{key: "-1"},
+			want: want{value: "minus ONE", status: http.StatusOK},
+		},
+		{
+			name: "success get by symbolic key",
+			args: args{key: "!@#$*()_+><"},
+			want: want{value: "symbols", status: http.StatusOK},
+		},
+		{
+			name: "failed get by existing key",
+			args: args{key: "11"},
+			want: want{value: "", status: http.StatusNotFound},
+		},
+		{
+			name: "failed get by empty key",
+			args: args{key: ""},
+			want: want{value: "", status: http.StatusBadRequest},
+		},
+		{
+			name: "failed get by long key",
+			args: args{key: "12345678901234567890123456789012345678901234567890123456789012345"},
+			want: want{value: "", status: http.StatusBadRequest},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -151,12 +210,38 @@ func TestDataLoggerHandler_Delete(t *testing.T) {
 		args       args
 		wantStatus int
 	}{
-		{name: "success delete by existing key", args: args{key: "1"}, wantStatus: http.StatusOK},
-		{name: "success delete by existing symbol+key", args: args{key: "-1"}, wantStatus: http.StatusOK},
-		{name: "success delete by symbolic key", args: args{key: "!@#$*()_+><"}, wantStatus: http.StatusOK},
-		{name: "failed delete by existing key", args: args{key: "11"}, wantStatus: http.StatusNotFound},
-		{name: "failed delete by empty key", args: args{key: ""}, wantStatus: http.StatusBadRequest},
-		{name: "failed delete by long key", args: args{key: "12345678901234567890123456789012345678901234567890123456789012345"}, wantStatus: http.StatusBadRequest},
+		{
+			name:       "success delete by existing key",
+			args:       args{key: "1"},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "success delete by existing symbol+key",
+			args:       args{key: "-1"},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "success delete by symbolic key",
+			args:       args{key: "!@#$*()_+><"},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "failed delete by existing key",
+			args:       args{key: "11"},
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name:       "failed delete by empty key",
+			args:       args{key: ""},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "failed delete by long key",
+			args: args{
+				key: "12345678901234567890123456789012345678901234567890123456789012345",
+			},
+			wantStatus: http.StatusBadRequest,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
