@@ -5,12 +5,15 @@ import (
 	"testing"
 
 	"github.com/dimishpatriot/kv-storage/internal/storage"
+	"github.com/dimishpatriot/kv-storage/internal/storage/localstorage"
 )
 
-var storageMock *storage.MockStorage
+var store *localstorage.LocalStorage
 
 func setupTest(tb testing.TB) func(tb testing.TB) {
-	storageMock = storage.NewMockStorage(tb)
+	store = localstorage.New().(*localstorage.LocalStorage)
+	_ = store.Put("one", "ONE")
+	_ = store.Put("0123456789", "numbers")
 
 	return func(tb testing.TB) {
 	}
@@ -36,9 +39,8 @@ func TestPut(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			after := setupTest(t)
 			defer after(t)
-			storageMock.EXPECT().Put(tt.args.key, tt.args.value).Return(nil)
 
-			err := storageMock.Put(tt.args.key, tt.args.value)
+			err := store.Put(tt.args.key, tt.args.value)
 			if (err != nil) && !errors.Is(err, tt.wantErr) {
 				t.Errorf("Put() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -67,9 +69,8 @@ func TestGet(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			after := setupTest(t)
 			defer after(t)
-			storageMock.EXPECT().Get(tt.args.key).Return(tt.want.value, tt.want.err)
 
-			got, err := storageMock.Get(tt.args.key)
+			got, err := store.Get(tt.args.key)
 			if (err != nil) && !errors.Is(err, tt.want.err) {
 				t.Errorf("Get() error = %v, wantErr %v", err, tt.want.err)
 				return
@@ -97,9 +98,8 @@ func TestDelete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			after := setupTest(t)
 			defer after(t)
-			storageMock.EXPECT().Delete(tt.args.key).Return(nil)
 
-			err := storageMock.Delete(tt.args.key)
+			err := store.Delete(tt.args.key)
 			if (err != nil) && !errors.Is(err, tt.wantErr) {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
 			}
