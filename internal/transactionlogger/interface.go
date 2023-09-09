@@ -1,5 +1,6 @@
 package transactionlogger
 
+//go:generate mockery --name TransactionLogger
 type TransactionLogger interface {
 	Err() <-chan error
 	ReadEvents() (<-chan Event, <-chan error)

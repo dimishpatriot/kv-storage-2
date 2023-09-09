@@ -33,6 +33,7 @@ func (dh *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
 		http.Error(w,
 			err.Error(),
 			http.StatusBadRequest)
+		return
 	}
 
 	bValue, err := io.ReadAll(r.Body)
@@ -49,6 +50,7 @@ func (dh *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
 		http.Error(w,
 			err.Error(),
 			http.StatusBadRequest)
+		return
 	}
 
 	err = dh.storage.Put(key, value)
@@ -70,6 +72,7 @@ func (dh *DataLoggerHandler) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w,
 			err.Error(),
 			http.StatusBadRequest)
+		return
 	}
 
 	value, err := dh.storage.Get(key)
@@ -96,6 +99,7 @@ func (dh *DataLoggerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w,
 			err.Error(),
 			http.StatusBadRequest)
+		return
 	}
 
 	err = dh.storage.Delete(key)

@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+//go:generate mockery --name Handler
 type Handler interface {
 	Put(http.ResponseWriter, *http.Request)
 	Get(http.ResponseWriter, *http.Request)
