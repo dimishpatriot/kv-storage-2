@@ -8,6 +8,7 @@ import (
 
 	"github.com/dimishpatriot/kv-storage/internal/handler"
 	"github.com/dimishpatriot/kv-storage/internal/handler/dlhandler"
+	"github.com/dimishpatriot/kv-storage/internal/services/keyservice"
 	"github.com/dimishpatriot/kv-storage/internal/storage"
 	"github.com/dimishpatriot/kv-storage/internal/storage/localstorage"
 	"github.com/dimishpatriot/kv-storage/internal/transactionlogger"
@@ -17,10 +18,11 @@ import (
 
 type App struct {
 	logger     *log.Logger
-	router     *mux.Router
-	dataLogger transactionlogger.TransactionLogger
-	handler    handler.Handler
 	storage    storage.Storage
+	dataLogger transactionlogger.TransactionLogger
+	keyService keyservice.KeyService
+	keyHandler handler.Handler
+	router     *mux.Router
 }
 
 func New() (*App, error) {
@@ -38,19 +40,14 @@ func New() (*App, error) {
 	logger.Println("dataLogger created")
 	// TODO: <------------
 
-	handler := dlhandler.New(logger, dataLogger, storage)
+	keyService := keyservice.New(logger, storage, dataLogger)
+	keyHandler := dlhandler.New(keyService)
 	logger.Println("handler created")
 
 	router := mux.NewRouter()
 	logger.Println("router created")
 
-	return &App{
-		dataLogger: dataLogger,
-		handler:    handler,
-		logger:     logger,
-		router:     router,
-		storage:    storage,
-	}, nil
+	return &App{logger, storage, dataLogger, keyService, keyHandler, router}, nil
 }
 
 func (app *App) Run() error {
@@ -64,7 +61,7 @@ func (app *App) Run() error {
 }
 
 func (app *App) addRoutes() {
-	app.router.HandleFunc("/v1/{key}", app.handler.Put).Methods("PUT")
-	app.router.HandleFunc("/v1/{key}", app.handler.Get).Methods("GET")
-	app.router.HandleFunc("/v1/{key}", app.handler.Delete).Methods("DELETE")
+	app.router.HandleFunc("/v1/{key}", app.keyHandler.Put).Methods("PUT")
+	app.router.HandleFunc("/v1/{key}", app.keyHandler.Get).Methods("GET")
+	app.router.HandleFunc("/v1/{key}", app.keyHandler.Delete).Methods("DELETE")
 }

@@ -2,40 +2,26 @@ package dlhandler_test
 
 import (
 	"fmt"
-	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/dimishpatriot/kv-storage/internal/handler"
 	"github.com/dimishpatriot/kv-storage/internal/handler/dlhandler"
+	"github.com/dimishpatriot/kv-storage/internal/services/keyservice"
 	"github.com/dimishpatriot/kv-storage/internal/storage"
-	"github.com/dimishpatriot/kv-storage/internal/transactionlogger"
 	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/mock"
 )
 
 var (
-	logger         *log.Logger
-	dataLoggerMock *transactionlogger.MockTransactionLogger
-	storageMock    *storage.MockStorage
-	dlh            handler.Handler
+	dlh         handler.Handler
+	serviceMock *keyservice.MockKeyService
 )
 
-func TestMain(m *testing.M) {
-	logger = log.New(os.Stdout, "INFO:", log.Lshortfile|log.Ltime|log.Lmicroseconds|log.Ldate)
-	logger.SetOutput(io.Discard) // disable logger output
-
-	os.Exit(m.Run())
-}
-
 func setupTest(tb testing.TB) func(tb testing.TB) {
-	dataLoggerMock = transactionlogger.NewMockTransactionLogger(tb)
-	storageMock = storage.NewMockStorage(tb)
-	dlh = dlhandler.New(logger, dataLoggerMock, storageMock)
+	serviceMock = keyservice.NewMockKeyService(tb)
+	dlh = dlhandler.New(serviceMock)
 
 	return func(tb testing.TB) {
 		// run after each test
@@ -47,7 +33,7 @@ func getPath(key string) string {
 	return fmt.Sprintf("/v1/%s", key)
 }
 
-func TestDataLoggerHandler_Put(t *testing.T) {
+func TestDataHandler_Put(t *testing.T) {
 	type args struct {
 		key   string
 		value string
@@ -98,9 +84,9 @@ func TestDataLoggerHandler_Put(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			after := setupTest(t)
 			defer after(t)
+
 			if tt.wantStatus == http.StatusCreated {
-				dataLoggerMock.EXPECT().WritePut(mock.Anything, tt.args.value).Return()
-				storageMock.EXPECT().Put(tt.args.key, tt.args.value).Return(nil)
+				serviceMock.EXPECT().Put(tt.args.key, tt.args.value).Return(nil)
 			}
 
 			res := httptest.NewRecorder()
@@ -123,7 +109,7 @@ func TestDataLoggerHandler_Put(t *testing.T) {
 	}
 }
 
-func TestDataLoggerHandler_Get(t *testing.T) {
+func TestDataHandler_Get(t *testing.T) {
 	type args struct {
 		key string
 	}
@@ -171,11 +157,12 @@ func TestDataLoggerHandler_Get(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			after := setupTest(t)
 			defer after(t)
+
 			if tt.want.status == http.StatusOK {
-				storageMock.EXPECT().Get(tt.args.key).Return(tt.want.value, nil)
+				serviceMock.EXPECT().Get(tt.args.key).Return(tt.want.value, nil)
 			}
 			if tt.want.status == http.StatusNotFound {
-				storageMock.EXPECT().Get(tt.args.key).Return("", storage.ErrorNoSuchKey)
+				serviceMock.EXPECT().Get(tt.args.key).Return("", storage.ErrorNoSuchKey)
 			}
 
 			res := httptest.NewRecorder()
@@ -200,7 +187,7 @@ func TestDataLoggerHandler_Get(t *testing.T) {
 	}
 }
 
-func TestDataLoggerHandler_Delete(t *testing.T) {
+func TestDataHandler_Delete(t *testing.T) {
 	type args struct {
 		key string
 	}
@@ -248,11 +235,10 @@ func TestDataLoggerHandler_Delete(t *testing.T) {
 			after := setupTest(t)
 			defer after(t)
 			if tt.wantStatus == http.StatusOK {
-				dataLoggerMock.EXPECT().WriteDelete(tt.args.key).Return()
-				storageMock.EXPECT().Delete(tt.args.key).Return(nil)
+				serviceMock.EXPECT().Delete(tt.args.key).Return(nil)
 			}
 			if tt.wantStatus == http.StatusNotFound {
-				storageMock.EXPECT().Delete(tt.args.key).Return(storage.ErrorNoSuchKey)
+				serviceMock.EXPECT().Delete(tt.args.key).Return(storage.ErrorNoSuchKey)
 			}
 
 			res := httptest.NewRecorder()

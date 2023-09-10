@@ -3,35 +3,24 @@ package dlhandler
 import (
 	"errors"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/dimishpatriot/kv-storage/internal/handler"
+	"github.com/dimishpatriot/kv-storage/internal/services/keyservice"
 	"github.com/dimishpatriot/kv-storage/internal/storage"
-	"github.com/dimishpatriot/kv-storage/internal/transactionlogger"
 	"github.com/gorilla/mux"
 )
 
-type DataLoggerHandler struct {
-	logger     *log.Logger
-	dataLogger transactionlogger.TransactionLogger
-	storage    storage.Storage
+type dataHandler struct {
+	keyService keyservice.KeyService
 }
 
-func New(
-	logger *log.Logger,
-	dataLogger transactionlogger.TransactionLogger,
-	storage storage.Storage,
-) handler.Handler {
-	return &DataLoggerHandler{
-		dataLogger: dataLogger,
-		logger:     logger,
-		storage:    storage,
-	}
+func New(keyService keyservice.KeyService) handler.Handler {
+	return &dataHandler{keyService}
 }
 
-func (dh *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
+func (dh *dataHandler) Put(w http.ResponseWriter, r *http.Request) {
 	key, err := dh.getKeyFromRequest(r)
 	if err != nil {
 		http.Error(w,
@@ -57,7 +46,7 @@ func (dh *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = dh.storage.Put(key, value)
+	err = dh.keyService.Put(key, value)
 	if err != nil {
 		http.Error(w,
 			err.Error(),
@@ -65,12 +54,10 @@ func (dh *DataLoggerHandler) Put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dh.logger.Printf("put: {%s: %s}\n", key, value)
-	dh.dataLogger.WritePut(key, value)
 	w.WriteHeader(http.StatusCreated)
 }
 
-func (dh *DataLoggerHandler) Get(w http.ResponseWriter, r *http.Request) {
+func (dh *dataHandler) Get(w http.ResponseWriter, r *http.Request) {
 	key, err := dh.getKeyFromRequest(r)
 	if err != nil {
 		http.Error(w,
@@ -79,7 +66,7 @@ func (dh *DataLoggerHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	value, err := dh.storage.Get(key)
+	value, err := dh.keyService.Get(key)
 	if errors.Is(err, storage.ErrorNoSuchKey) {
 		http.Error(w,
 			err.Error(),
@@ -92,12 +79,10 @@ func (dh *DataLoggerHandler) Get(w http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 		return
 	}
-
-	dh.logger.Printf("get: {%s: %s}\n", key, value)
 	_, _ = w.Write([]byte(value))
 }
 
-func (dh *DataLoggerHandler) Delete(w http.ResponseWriter, r *http.Request) {
+func (dh *dataHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	key, err := dh.getKeyFromRequest(r)
 	if err != nil {
 		http.Error(w,
@@ -106,7 +91,7 @@ func (dh *DataLoggerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = dh.storage.Delete(key)
+	err = dh.keyService.Delete(key)
 	if errors.Is(err, storage.ErrorNoSuchKey) {
 		http.Error(w,
 			err.Error(),
@@ -120,12 +105,10 @@ func (dh *DataLoggerHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dh.logger.Printf("delete: {%s}\n", key)
-	dh.dataLogger.WriteDelete(key)
 	w.WriteHeader(http.StatusOK)
 }
 
-func (dh *DataLoggerHandler) getKeyFromRequest(r *http.Request) (string, error) {
+func (dh *dataHandler) getKeyFromRequest(r *http.Request) (string, error) {
 	key := mux.Vars(r)["key"]
 	return key, checkKey(key)
 }

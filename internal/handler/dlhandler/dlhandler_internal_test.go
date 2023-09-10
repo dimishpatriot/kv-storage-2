@@ -7,7 +7,7 @@ import (
 	"github.com/dimishpatriot/kv-storage/internal/handler"
 )
 
-func Test_checkKey(t *testing.T) {
+func TestDataHandler_checkKey(t *testing.T) {
 	type args struct {
 		key string
 	}
@@ -80,7 +80,7 @@ func Test_checkKey(t *testing.T) {
 	}
 }
 
-func Test_checkValue(t *testing.T) {
+func TestDataHandler_checkValue(t *testing.T) {
 	type args struct {
 		value string
 	}
