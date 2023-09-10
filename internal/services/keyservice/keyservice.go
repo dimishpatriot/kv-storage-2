@@ -3,8 +3,8 @@ package keyservice
 import (
 	"log"
 
+	"github.com/dimishpatriot/kv-storage/internal/services/transactionlogger"
 	"github.com/dimishpatriot/kv-storage/internal/storage"
-	"github.com/dimishpatriot/kv-storage/internal/transactionlogger"
 )
 
 //go:generate mockery --name KeyService
