@@ -1,4 +1,4 @@
-package dlhandler_test
+package handler_test
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/dimishpatriot/kv-storage/internal/handler"
-	"github.com/dimishpatriot/kv-storage/internal/handler/dlhandler"
 	"github.com/dimishpatriot/kv-storage/internal/services/keyservice"
 	"github.com/dimishpatriot/kv-storage/internal/storage"
 	"github.com/gorilla/mux"
@@ -21,7 +20,7 @@ var (
 
 func setupTest(tb testing.TB) func(tb testing.TB) {
 	serviceMock = keyservice.NewMockKeyService(tb)
-	dlh = dlhandler.New(serviceMock)
+	dlh = handler.New(serviceMock)
 
 	return func(tb testing.TB) {
 		// run after each test

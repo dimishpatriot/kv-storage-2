@@ -1,4 +1,4 @@
-package dlhandler
+package handler
 
 import (
 	"errors"
@@ -6,17 +6,31 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/dimishpatriot/kv-storage/internal/handler"
 	"github.com/dimishpatriot/kv-storage/internal/services/keyservice"
 	"github.com/dimishpatriot/kv-storage/internal/storage"
 	"github.com/gorilla/mux"
 )
 
+//go:generate mockery --name Handler
+type Handler interface {
+	Put(http.ResponseWriter, *http.Request)
+	Get(http.ResponseWriter, *http.Request)
+	Delete(http.ResponseWriter, *http.Request)
+}
+
 type dataHandler struct {
 	keyService keyservice.KeyService
 }
 
-func New(keyService keyservice.KeyService) handler.Handler {
+var (
+	ErrorEmptyKey                   = errors.New("empty key")
+	ErrorLongKey                    = errors.New("key length > 64 byte")
+	ErrorKeyContainsForbiddenSymbol = errors.New("forbidden symbol in key")
+	ErrorEmptyValue                 = errors.New("empty value")
+	ErrorLongValue                  = errors.New("value length > 128 byte")
+)
+
+func New(keyService keyservice.KeyService) Handler {
 	return &dataHandler{keyService}
 }
 
@@ -115,13 +129,13 @@ func (dh *dataHandler) getKeyFromRequest(r *http.Request) (string, error) {
 
 func checkKey(key string) error {
 	if key == "" {
-		return handler.ErrorEmptyKey
+		return ErrorEmptyKey
 	}
 	if len(key) > 64 {
-		return handler.ErrorLongKey
+		return ErrorLongKey
 	}
 	if strings.ContainsAny(key, " /\t\n") {
-		return handler.ErrorKeyContainsForbiddenSymbol
+		return ErrorKeyContainsForbiddenSymbol
 	}
 
 	return nil
@@ -129,10 +143,10 @@ func checkKey(key string) error {
 
 func checkValue(value string) error {
 	if value == "" {
-		return handler.ErrorEmptyValue
+		return ErrorEmptyValue
 	}
 	if len(value) > 128 {
-		return handler.ErrorLongValue
+		return ErrorLongValue
 	}
 
 	return nil
