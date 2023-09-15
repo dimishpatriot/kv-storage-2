@@ -20,6 +20,18 @@ type keyService struct {
 	dataLogger transactionlogger.TransactionLogger
 }
 
+func New(
+	logger *log.Logger,
+	storage storage.Storage,
+	dataLogger transactionlogger.TransactionLogger,
+) KeyService {
+	return &keyService{
+		logger,
+		storage,
+		dataLogger,
+	}
+}
+
 // Put implements Service.
 func (s *keyService) Put(k, v string) error {
 	err := s.storage.Put(k, v)
@@ -50,8 +62,4 @@ func (s *keyService) Get(k string) (string, error) {
 	}
 
 	return v, err
-}
-
-func New(logger *log.Logger, storage storage.Storage, dataLogger transactionlogger.TransactionLogger) KeyService {
-	return &keyService{logger, storage, dataLogger}
 }

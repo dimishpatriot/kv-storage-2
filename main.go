@@ -1,17 +1,24 @@
 package main
 
 import (
+	"flag"
 	"log"
-	"os"
 
 	"github.com/dimishpatriot/kv-storage/cmd/app"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	app, err := app.New()
+	storageType := flag.String("s", "local", "type of storage")
+	flag.Parse()
+
+	if err := godotenv.Load(".env"); err != nil {
+		log.Fatal("can't get environment variables: %w", err)
+	}
+
+	app, err := app.New(app.AppConfig{StorageType: *storageType})
 	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
+		log.Fatal("can't create new application: %w", err)
 	}
 	log.Fatal(app.Run())
 }

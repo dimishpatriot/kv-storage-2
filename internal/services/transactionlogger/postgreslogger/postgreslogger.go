@@ -8,7 +8,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"github.com/dimishpatriot/kv-storage/internal/services/transactionlogger"
-	"github.com/dimishpatriot/kv-storage/internal/storage"
+	"github.com/dimishpatriot/kv-storage/internal/storage/postgresstorage"
 )
 
 type PostgresTransactionLogger struct {
@@ -16,44 +16,43 @@ type PostgresTransactionLogger struct {
 	errors  <-chan error
 	db      *sql.DB
 	logger  *log.Logger
-	storage storage.Storage
+	storage *postgresstorage.PostgresStorage
 }
 
 type PostgresDBParams struct {
-	name     string
-	host     string
-	user     string
-	password string
+	DBName   string
+	Host     string
+	User     string
+	Password string
+	SSLMode  string
 }
 
 func New(
 	logger *log.Logger,
 	dbParams PostgresDBParams,
-	storage storage.Storage,
-) (transactionlogger.TransactionLogger, error) {
-	connStr := fmt.Sprintf(
-		"host=%s dbname=%s user=%s password=%s",
-		dbParams.host, dbParams.name, dbParams.user, dbParams.password,
+) (transactionlogger.TransactionLogger, *sql.DB, error) {
+	connString := fmt.Sprintf(
+		"postgres://%s:%s@%s/%s?sslmode=%s",
+		dbParams.User, dbParams.Password, dbParams.Host, dbParams.DBName, dbParams.SSLMode,
 	)
-
-	db, err := getDBConnection(connStr)
+	db, err := getDBConnection(connString)
 	if err != nil {
-		return nil, fmt.Errorf("cant get db: %w", err)
+		return nil, nil, fmt.Errorf("cant get db: %w", err)
 	}
+	storage := postgresstorage.New(db)
 
-	ptl := PostgresTransactionLogger{logger: logger, db: db, storage: storage}
-
-	exists, err := ptl.verifyTableExists()
-	if err != nil {
-		return nil, fmt.Errorf("cant verify table exists: %w", err)
-	}
-	if !exists {
-		if err = ptl.createTable(); err != nil {
-			return nil, fmt.Errorf("cant create table: %w", err)
+	if exists := storage.VerifyTableExists(); !exists {
+		err = storage.CreateTable()
+		if err != nil {
+			return nil, nil, fmt.Errorf("can't create table: %w", err)
 		}
 	}
 
-	return &ptl, nil
+	return &PostgresTransactionLogger{
+		logger:  logger,
+		db:      db,
+		storage: storage,
+	}, db, nil
 }
 
 func getDBConnection(connStr string) (*sql.DB, error) {
@@ -67,19 +66,9 @@ func getDBConnection(connStr string) (*sql.DB, error) {
 	return db, nil
 }
 
-func (l *PostgresTransactionLogger) verifyTableExists() (bool, error) {
-	// TODO:
-
-	return true, nil
-}
-
-func (l *PostgresTransactionLogger) createTable() error {
-	// TODO:
-
-	return nil
-}
-
 func (l *PostgresTransactionLogger) Run() {
+	var err error
+
 	l.logger.Println("dataLogger run...")
 
 	events := make(chan transactionlogger.Event, 16)
@@ -88,7 +77,20 @@ func (l *PostgresTransactionLogger) Run() {
 	l.errors = errors
 
 	go func() {
-		// TODO:
+		for event := range events {
+			switch event.EventType {
+			case transactionlogger.EventPut:
+				if err = l.storage.Put(event.Key, event.Value); err != nil {
+					errors <- err
+					return
+				}
+			case transactionlogger.EventDelete:
+				if err = l.storage.Delete(event.Key); err != nil {
+					errors <- err
+					return
+				}
+			}
+		}
 	}()
 }
 
@@ -102,7 +104,13 @@ func (l *PostgresTransactionLogger) ReadEvents() (<-chan transactionlogger.Event
 		defer close(outEvent)
 		defer close(outError)
 
-		// TODO:
+		res, err := l.storage.GetAll()
+		if err != nil {
+			outError <- err
+		}
+		for _, r := range res {
+			outEvent <- r
+		}
 	}()
 
 	return outEvent, outError

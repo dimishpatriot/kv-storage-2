@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/dimishpatriot/kv-storage/internal/services/transactionlogger"
-	"github.com/dimishpatriot/kv-storage/internal/storage"
 )
 
 const (
@@ -23,43 +22,19 @@ type FileTransactionLogger struct {
 	lastSequence uint64
 	file         *os.File
 	logger       *log.Logger
-	storage      storage.Storage
 }
 
 func New(
 	logger *log.Logger,
 	filename string,
-	storage storage.Storage,
 ) (transactionlogger.TransactionLogger, error) {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o755)
 	if err != nil {
 		return nil, fmt.Errorf("cant open log file: %w", err)
 	}
-	ftl := FileTransactionLogger{logger: logger, file: file, storage: storage}
-	ftl.restoreData()
+	ftl := FileTransactionLogger{logger: logger, file: file}
 
 	return &ftl, nil
-}
-
-func (l *FileTransactionLogger) restoreData() {
-	l.logger.Println("restore data...")
-
-	var err error
-	events, errors := l.ReadEvents()
-	e, ok := transactionlogger.Event{}, true
-
-	for ok && err == nil {
-		select {
-		case err, ok = <-errors:
-		case e, ok = <-events:
-			switch e.EventType {
-			case transactionlogger.EventDelete:
-				err = l.storage.Delete(e.Key)
-			case transactionlogger.EventPut:
-				err = l.storage.Put(e.Key, e.Value)
-			}
-		}
-	}
 }
 
 func (l *FileTransactionLogger) Run() {
