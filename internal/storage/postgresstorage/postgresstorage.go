@@ -10,15 +10,19 @@ import (
 )
 
 type PostgresStorage struct {
-	db *sql.DB
+	db   *sql.DB
+	name string
 }
 
-func New(db *sql.DB) *PostgresStorage {
-	return &PostgresStorage{db: db}
+func New(db *sql.DB, name string) *PostgresStorage {
+	return &PostgresStorage{db, name}
 }
 
 func (s *PostgresStorage) VerifyTableExists() bool {
-	qs := "SELECT * FROM transactions LIMIT 1;"
+	qs := fmt.Sprintf(`
+	SELECT * FROM %s 
+	LIMIT 1
+	`, s.name)
 	if _, err := s.db.Query(qs); err != nil {
 		return false
 	}
@@ -27,25 +31,26 @@ func (s *PostgresStorage) VerifyTableExists() bool {
 }
 
 func (s *PostgresStorage) CreateTable() error {
-	q := `
-	CREATE TABLE transactions (
+	q := fmt.Sprintf(`
+	CREATE TABLE %s (
 	sequence BIGSERIAL PRIMARY KEY,
 	event_type SMALLINT,
-	key TEXT,
-	value TEXT)`
+	key TEXT NOT NULL,
+	value TEXT NOT NULL)
+	`, s.name)
 	if _, err := s.db.Exec(q); err != nil {
-		return fmt.Errorf("can't create transactions table: %w", err)
+		return fmt.Errorf("can't create table: %w", err)
 	}
 
 	return nil
 }
 
 func (s *PostgresStorage) Put(k, v string) error {
-	q := `
-	INSERT INTO transactions 
+	q := fmt.Sprintf(`
+	INSERT INTO %s 
 	(event_type, key, value) 
 	VALUES ($1, $2, $3)
-`
+`, s.name)
 	if _, err := s.db.Exec(q, transactionlogger.EventPut, k, v); err != nil {
 		return fmt.Errorf("failed to insert data: %w", err)
 	}
@@ -53,15 +58,11 @@ func (s *PostgresStorage) Put(k, v string) error {
 	return nil
 }
 
-type Row struct {
-	Sequence  string
-	EventType transactionlogger.EventType
-	Key       string
-	Value     string
-}
-
 func (s *PostgresStorage) GetAll() ([]transactionlogger.Event, error) {
-	q := "SELECT * FROM transactions ORDER BY sequence"
+	q := fmt.Sprintf(`
+	SELECT * FROM %s 
+	ORDER BY sequence
+	`, s.name)
 	result := []transactionlogger.Event{}
 
 	rows, err := s.db.Query(q)
@@ -86,10 +87,11 @@ func (s *PostgresStorage) GetAll() ([]transactionlogger.Event, error) {
 }
 
 func (s *PostgresStorage) Get(k string) (string, error) {
-	q := `
+	q := fmt.Sprintf(`
 	SELECT event_type, key, value 
-	FROM transactions 
-	WHERE key=$1`
+	FROM %s 
+	WHERE key=$1
+	`, s.name)
 	row := s.db.QueryRow(q, k)
 
 	e := transactionlogger.Event{}
@@ -103,10 +105,10 @@ func (s *PostgresStorage) Get(k string) (string, error) {
 }
 
 func (s *PostgresStorage) Delete(k string) error {
-	q := `
-	DELETE FROM transactions 
-	WHERE key=$1`
-
+	q := fmt.Sprintf(`
+	DELETE FROM %s 
+	WHERE key=$1
+	`, s.name)
 	_, err := s.db.Exec(q, k)
 	if err != nil {
 		return fmt.Errorf("failed to clear data: %w", err)

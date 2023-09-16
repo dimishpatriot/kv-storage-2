@@ -39,7 +39,7 @@ func New(
 	if err != nil {
 		return nil, nil, fmt.Errorf("cant get db: %w", err)
 	}
-	storage := postgresstorage.New(db)
+	storage := postgresstorage.New(db, "transactions")
 
 	if exists := storage.VerifyTableExists(); !exists {
 		err = storage.CreateTable()

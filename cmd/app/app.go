@@ -72,7 +72,7 @@ func New(config AppConfig) (*App, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create pg-logger: %w", err)
 		}
-		storage = postgresstorage.New(db)
+		storage = postgresstorage.New(db, "transactions")
 		logger.Println("storage created")
 
 		logger.Println("dataLogger created")
