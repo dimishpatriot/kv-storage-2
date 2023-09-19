@@ -15,20 +15,20 @@ type KeyService interface {
 }
 
 type keyService struct {
-	logger     *log.Logger
-	storage    storage.Storage
-	dataLogger transactionlogger.TransactionLogger
+	logger  *log.Logger
+	storage storage.Storage
+	tLogger transactionlogger.TransactionLogger
 }
 
 func New(
 	logger *log.Logger,
 	storage storage.Storage,
-	dataLogger transactionlogger.TransactionLogger,
+	tLogger transactionlogger.TransactionLogger,
 ) KeyService {
 	return &keyService{
 		logger,
 		storage,
-		dataLogger,
+		tLogger,
 	}
 }
 
@@ -37,7 +37,7 @@ func (s *keyService) Put(k, v string) error {
 	err := s.storage.Put(k, v)
 	if err == nil {
 		s.logger.Printf("put: {%s: %s}\n", k, v)
-		s.dataLogger.WritePut(k, v)
+		s.tLogger.WritePut(k, v)
 	}
 
 	return err
@@ -48,7 +48,7 @@ func (s *keyService) Delete(k string) error {
 	err := s.storage.Delete(k)
 	if err == nil {
 		s.logger.Printf("delete: {%s}\n", k)
-		s.dataLogger.WriteDelete(k)
+		s.tLogger.WriteDelete(k)
 	}
 
 	return err

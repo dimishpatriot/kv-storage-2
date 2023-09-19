@@ -30,35 +30,34 @@ func TestPut(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:    "correct key",
-			args:    args{key: "correct key", value: "correct value"},
-			wantErr: nil,
+			"correct key",
+			args{key: "correct key", value: "correct value"},
+			nil,
 		},
 		{
-			name:    "existing key",
-			args:    args{key: "one", value: "NEW ONE"},
-			wantErr: nil,
+			"existing key",
+			args{key: "one", value: "NEW ONE"},
+			nil,
 		},
 		{
-			name:    "one symbol key",
-			args:    args{key: "K", value: "correct value"},
-			wantErr: nil,
+			"one symbol key",
+			args{key: "K", value: "correct value"},
+			nil,
 		},
 		{
-			name:    "non alphabet key",
-			args:    args{key: "~!@#$%^&*()_+", value: "correct value"},
-			wantErr: nil,
+			"non alphabet key",
+			args{key: "~!@#$%^&*()_+", value: "correct value"},
+			nil,
 		},
 		{
-			name:    "number string key",
-			args:    args{key: "0123456789", value: "correct value"},
-			wantErr: nil,
+			"number string key",
+			args{key: "0123456789", value: "correct value"},
+			nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			after := setupTest(t)
-			defer after(t)
+			setupTest(t)
 
 			err := store.Put(tt.args.key, tt.args.value)
 			if (err != nil) && !errors.Is(err, tt.wantErr) {
@@ -82,25 +81,24 @@ func TestGet(t *testing.T) {
 		want want
 	}{
 		{
-			name: "common key",
-			args: args{key: "one"},
-			want: want{value: "ONE", err: nil},
+			"common key",
+			args{key: "one"},
+			want{value: "ONE", err: nil},
 		},
 		{
-			name: "number string key",
-			args: args{key: "0123456789"},
-			want: want{value: "numbers", err: nil},
+			"number string key",
+			args{key: "0123456789"},
+			want{value: "numbers", err: nil},
 		},
 		{
-			name: "absent key",
-			args: args{key: "absent"},
-			want: want{value: "", err: storage.ErrorNoSuchKey},
+			"absent key",
+			args{key: "absent"},
+			want{value: "", err: storage.ErrorNoSuchKey},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			after := setupTest(t)
-			defer after(t)
+			setupTest(t)
 
 			got, err := store.Get(tt.args.key)
 			if (err != nil) && !errors.Is(err, tt.want.err) {
@@ -123,13 +121,20 @@ func TestDelete(t *testing.T) {
 		args    args
 		wantErr error
 	}{
-		{name: "exists key", args: args{key: "one"}, wantErr: nil},
-		{name: "absent key", args: args{key: "ONE"}, wantErr: storage.ErrorNoSuchKey},
+		{
+			"exists key",
+			args{key: "one"},
+			nil,
+		},
+		{
+			"absent key",
+			args{key: "ONE"},
+			storage.ErrorNoSuchKey,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			after := setupTest(t)
-			defer after(t)
+			setupTest(t)
 
 			err := store.Delete(tt.args.key)
 			if (err != nil) && !errors.Is(err, tt.wantErr) {

@@ -68,9 +68,21 @@ func TestPostgresStorage_VerifyTableExists(t *testing.T) {
 		isExists  bool
 	}
 	tests := []test{
-		{name: "existing table", tableName: tableName, isExists: true},
-		{name: "not existing table", tableName: "ABC", isExists: false},
-		{name: "empty table name", tableName: "", isExists: false},
+		{
+			"existing table",
+			tableName,
+			true,
+		},
+		{
+			"not existing table",
+			"ABC",
+			false,
+		},
+		{
+			"empty table name",
+			"",
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -90,9 +102,21 @@ func TestPostgresStorage_CreateTable(t *testing.T) {
 		wantErr   bool
 	}
 	tests := []test{
-		{name: "new table", tableName: "new", wantErr: false},
-		{name: "existing table", tableName: tableName, wantErr: true},
-		{name: "table with empty name", tableName: "", wantErr: true},
+		{
+			"new table",
+			"new",
+			false,
+		},
+		{
+			"existing table",
+			tableName,
+			true,
+		},
+		{
+			"table with empty name",
+			"",
+			true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -113,24 +137,40 @@ func TestPostgresStorage_CreateTable(t *testing.T) {
 
 func TestPostgresStorage_Put(t *testing.T) {
 	type args struct {
-		k string
-		v string
+		key   string
+		value string
 	}
 	tests := []struct {
 		name    string
 		args    args
 		wantErr bool
 	}{
-		{name: "correct args", args: args{k: "key", v: "value"}, wantErr: false},
-		{name: "equal args", args: args{k: "equal", v: "equal"}, wantErr: false},
-		{name: "short args", args: args{k: "k", v: "v"}, wantErr: false},
-		{name: "with numbers args", args: args{k: "100", v: "500"}, wantErr: false},
+		{
+			"correct args",
+			args{key: "key", value: "value"},
+			false,
+		},
+		{
+			"equal args",
+			args{key: "equal", value: "equal"},
+			false,
+		},
+		{
+			"short args",
+			args{key: "k", value: "v"},
+			false,
+		},
+		{
+			"with numbers args",
+			args{key: "100", value: "500"},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := postgresstorage.New(db, tableName)
 
-			err := s.Put(tt.args.k, tt.args.v)
+			err := s.Put(tt.args.key, tt.args.value)
 
 			assert.Equal(t, tt.wantErr, err != nil)
 		})
@@ -147,9 +187,21 @@ func TestPostgresStorage_Get(t *testing.T) {
 		key  string
 		want want
 	}{
-		{name: "existing key", key: "one", want: want{value: "ONE", error: false}},
-		{name: "no existing key", key: " one ", want: want{value: "", error: true}},
-		{name: "empty key", key: "", want: want{value: "", error: true}},
+		{
+			"existing key",
+			"one",
+			want{value: "ONE", error: false},
+		},
+		{
+			"no existing key",
+			" one ",
+			want{value: "", error: true},
+		},
+		{
+			"empty key",
+			"",
+			want{value: "", error: true},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

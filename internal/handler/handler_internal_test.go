@@ -16,58 +16,64 @@ func TestDataHandler_checkKey(t *testing.T) {
 		wantErrorType error
 	}{
 		{
-			name:    "correct simple key",
-			args:    args{key: "123abc"},
-			wantErr: false,
+			"correct simple key",
+			args{key: "123abc"},
+			false,
+			nil,
 		},
 		{
-			name:    "correct long key",
-			args:    args{key: "1234567890123456789012345678901234567890123456789012345678901234"},
-			wantErr: false,
-		},
-		{name: "key with symbols", args: args{key: "!@#$%^&*()_+><"}, wantErr: false},
-		{
-			name:          "empty key",
-			args:          args{key: ""},
-			wantErr:       true,
-			wantErrorType: ErrorEmptyKey,
+			"correct long key",
+			args{key: "1234567890123456789012345678901234567890123456789012345678901234"},
+			false,
+			nil,
 		},
 		{
-			name: "very long key",
-			args: args{
-				key: "12345678901234567890123456789012345678901234567890123456789012345",
-			},
-			wantErr:       true,
-			wantErrorType: ErrorLongKey,
+			"key with symbols",
+			args{key: "!@#$%^&*()_+><"},
+			false,
+			nil,
 		},
 		{
-			name:          "key with space",
-			args:          args{key: "abc def"},
-			wantErr:       true,
-			wantErrorType: ErrorKeyContainsForbiddenSymbol,
+			"empty key",
+			args{key: ""},
+			true,
+			ErrorEmptyKey,
 		},
 		{
-			name:          "key with tab",
-			args:          args{key: "abc\tdef"},
-			wantErr:       true,
-			wantErrorType: ErrorKeyContainsForbiddenSymbol,
+			"very long key",
+			args{key: "12345678901234567890123456789012345678901234567890123456789012345"},
+			true,
+			ErrorLongKey,
 		},
 		{
-			name:          "key with new line",
-			args:          args{key: "abcdef\n"},
-			wantErr:       true,
-			wantErrorType: ErrorKeyContainsForbiddenSymbol,
+			"key with space",
+			args{key: "abc def"},
+			true,
+			ErrorKeyContainsForbiddenSymbol,
 		},
 		{
-			name:          "key with slash",
-			args:          args{key: "a/b"},
-			wantErr:       true,
-			wantErrorType: ErrorKeyContainsForbiddenSymbol,
+			"key with tab",
+			args{key: "abc\tdef"},
+			true,
+			ErrorKeyContainsForbiddenSymbol,
+		},
+		{
+			"key with new line",
+			args{key: "abcdef\n"},
+			true,
+			ErrorKeyContainsForbiddenSymbol,
+		},
+		{
+			"key with slash",
+			args{key: "a/b"},
+			true,
+			ErrorKeyContainsForbiddenSymbol,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := checkKey(tt.args.key)
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("checkKey() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -89,45 +95,50 @@ func TestDataHandler_checkValue(t *testing.T) {
 		wantErrorType error
 	}{
 		{
-			name:    "correct simple value",
-			args:    args{value: "123abc"},
-			wantErr: false,
+			"correct simple value",
+			args{value: "123abc"},
+			false,
+			nil,
 		},
 		{
-			name: "correct long value",
-			args: args{
-				value: "12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678",
+			"correct long value",
+			args{
+				"12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678",
 			},
-			wantErr: false,
+			false,
+			nil,
 		},
 		{
-			name:    "value with symbols",
-			args:    args{value: "!@#$%^&*()_+><"},
-			wantErr: false,
+			"value with symbols",
+			args{value: "!@#$%^&*()_+><"},
+			false,
+			nil,
 		},
 		{
-			name:    "multi line value",
-			args:    args{value: "abc\ndef\n\n0"},
-			wantErr: false,
+			"multi line value",
+			args{value: "abc\ndef\n\n0"},
+			false,
+			nil,
 		},
 		{
-			name:    "value with tabs",
-			args:    args{value: "tab\ttab\t\ttab"},
-			wantErr: false,
+			"value with tabs",
+			args{value: "tab\ttab\t\ttab"},
+			false,
+			nil,
 		},
 		{
-			name:          "empty value",
-			args:          args{value: ""},
-			wantErr:       true,
-			wantErrorType: ErrorEmptyValue,
+			"empty value",
+			args{value: ""},
+			true,
+			ErrorEmptyValue,
 		},
 		{
-			name: "very long value",
-			args: args{
-				value: "123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+			"very long value",
+			args{
+				"123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
 			},
-			wantErr:       true,
-			wantErrorType: ErrorLongValue,
+			true,
+			ErrorLongValue,
 		},
 	}
 	for _, tt := range tests {
