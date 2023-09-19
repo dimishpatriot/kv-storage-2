@@ -50,13 +50,14 @@ func prepareDB(m *testing.M) (code int, err error) {
 	`, tableName)
 	_, _ = db.Exec(q)
 
+	// need add sequence for sqlite3 test base!
 	q = fmt.Sprintf(`
 	INSERT INTO %s 
-	(event_type, key, value) 
-	VALUES ($1, $2, $3)
+	(sequence, event_type, key, value) 
+	VALUES ($1, $2, $3, $4)
 	`, tableName)
-	_, _ = db.Exec(q, transactionlogger.EventPut, "one", "ONE")
-	_, _ = db.Exec(q, transactionlogger.EventPut, "2", "two")
+	_, _ = db.Exec(q, 1, transactionlogger.EventPut, "one", "ONE")
+	_, _ = db.Exec(q, 2, transactionlogger.EventPut, "2", "two")
 
 	return m.Run(), nil
 }
@@ -135,6 +136,38 @@ func TestPostgresStorage_CreateTable(t *testing.T) {
 	}
 }
 
+func TestPostgresStorage_GetAll(t *testing.T) {
+	type want struct {
+		result []transactionlogger.Event
+		err    bool
+	}
+	type test struct {
+		name string
+		want want
+	}
+	tests := []test{
+		{
+			"simple",
+			want{
+				[]transactionlogger.Event{
+					{Sequence: 1, EventType: transactionlogger.EventPut, Key: "one", Value: "ONE"},
+					{Sequence: 2, EventType: transactionlogger.EventPut, Key: "2", Value: "two"},
+				},
+				false,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			store := postgresstorage.New(db, tableName)
+			res, err := store.GetAll()
+
+			assert.Equal(t, tt.want.err, err != nil)
+			assert.EqualValues(t, tt.want.result, res)
+		})
+	}
+}
+
 func TestPostgresStorage_Put(t *testing.T) {
 	type args struct {
 		key   string
@@ -209,6 +242,41 @@ func TestPostgresStorage_Get(t *testing.T) {
 
 			got, err := s.Get(tt.key)
 			assert.Equal(t, tt.want.value, got)
+			assert.Equal(t, tt.want.error, err != nil)
+		})
+	}
+}
+
+func TestPostgresStorage_Delete(t *testing.T) {
+	type want struct {
+		error bool
+	}
+	tests := []struct {
+		name string
+		key  string
+		want want
+	}{
+		{
+			"existing key",
+			"one",
+			want{error: false},
+		},
+		{
+			"no existing key",
+			" one ",
+			want{error: true},
+		},
+		{
+			"empty key",
+			"",
+			want{error: true},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := postgresstorage.New(db, tableName)
+
+			err := s.Delete(tt.key)
 			assert.Equal(t, tt.want.error, err != nil)
 		})
 	}

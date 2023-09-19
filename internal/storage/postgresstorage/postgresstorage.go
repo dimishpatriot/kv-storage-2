@@ -23,9 +23,11 @@ func (s *PostgresStorage) VerifyTableExists() bool {
 	SELECT * FROM %s 
 	LIMIT 1
 	`, s.name)
-	if _, err := s.db.Query(qs); err != nil {
+	rows, err := s.db.Query(qs)
+	if err != nil {
 		return false
 	}
+	rows.Close()
 
 	return true
 }
@@ -60,7 +62,7 @@ func (s *PostgresStorage) Put(k, v string) error {
 
 func (s *PostgresStorage) GetAll() ([]transactionlogger.Event, error) {
 	q := fmt.Sprintf(`
-	SELECT * FROM %s 
+	SELECT sequence, event_type, key, value FROM %s 
 	ORDER BY sequence
 	`, s.name)
 	result := []transactionlogger.Event{}
@@ -87,6 +89,10 @@ func (s *PostgresStorage) GetAll() ([]transactionlogger.Event, error) {
 }
 
 func (s *PostgresStorage) Get(k string) (string, error) {
+	if k == "" {
+		return "", storage.ErrorNoSuchKey
+	}
+
 	q := fmt.Sprintf(`
 	SELECT event_type, key, value 
 	FROM %s 
@@ -105,13 +111,20 @@ func (s *PostgresStorage) Get(k string) (string, error) {
 }
 
 func (s *PostgresStorage) Delete(k string) error {
+	if k == "" {
+		return storage.ErrorNoSuchKey
+	}
+
 	q := fmt.Sprintf(`
 	DELETE FROM %s 
 	WHERE key=$1
 	`, s.name)
-	_, err := s.db.Exec(q, k)
+	res, err := s.db.Exec(q, k)
 	if err != nil {
 		return fmt.Errorf("failed to clear data: %w", err)
+	}
+	if num, _ := res.RowsAffected(); num == 0 {
+		return storage.ErrorNoSuchKey
 	}
 
 	return nil
