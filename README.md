@@ -12,3 +12,6 @@ learning project key-value storage service with local file storage & postgres st
 `go run . -s=<type-of-storage>`, where type is:
 - `local` - local file storage
 - `postgres` - postgres storage
+
+## test coverage
+run `./get_coverage.sh`
